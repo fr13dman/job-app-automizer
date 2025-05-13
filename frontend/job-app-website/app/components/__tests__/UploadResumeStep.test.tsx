@@ -4,6 +4,7 @@ import UploadResumeStep from '../UploadResumeStep'
 import '@testing-library/jest-dom'
 
 describe('UploadResumeStep', () => {
+    // This test verifies that the error message is shown and the onNext handler is called when the Next button is clicked with no resume selected.
     it('shows error and calls handlers', () => {
         const onUpload = jest.fn()
         const onNext = jest.fn()

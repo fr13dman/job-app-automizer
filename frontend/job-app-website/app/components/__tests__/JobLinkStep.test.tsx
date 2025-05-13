@@ -4,6 +4,7 @@ import JobLinkStep from '../JobLinkStep'
 import '@testing-library/jest-dom'
 
 describe('JobLinkStep', () => {
+    // This test verifies that the error message is shown and the onNext handler is called when the Next button is clicked with an empty job link.
     it('shows error and calls handlers', () => {
         const onChange = jest.fn()
         const onNext = jest.fn()
@@ -15,6 +16,7 @@ describe('JobLinkStep', () => {
         expect(onNext).toHaveBeenCalled()
     })
 
+    // This test verifies that the error message for an invalid URL is shown and onNext is called exactly once when the Next button is clicked with an invalid job link.
     it('shows error for invalid URL', () => {
         const onChange = jest.fn()
         const onNext = jest.fn()
@@ -31,6 +33,7 @@ describe('JobLinkStep', () => {
         expect(onNext).toHaveBeenCalledTimes(1)
     })
 
+    // This test verifies that onChange is called when the input changes and onNext is called when the Next button is clicked with a valid job link.
     it('calls onChange and onNext', () => {
         const onChange = jest.fn()
         const onNext = jest.fn()

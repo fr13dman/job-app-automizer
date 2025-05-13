@@ -4,6 +4,7 @@ import StartStep from '../StartStep'
 import '@testing-library/jest-dom'
 
 describe('StartStep', () => {
+    // This test verifies that the StartStep component renders the expected text and calls the onStart handler when the button is clicked.
     it('renders and calls onStart when button is clicked', () => {
         const onStart = jest.fn()
         render(<StartStep onStart={onStart} />)
