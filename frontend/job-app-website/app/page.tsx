@@ -42,6 +42,8 @@ export default function Home() {
     const handleGenerate = async () => {
         setError('')
         setLoading(true)
+        setCoverLetter('') // Reset cover letter text area
+
         // Validate inputs
         if (
             (resumeInputMode === 'text' && !resumeText.trim()) ||
@@ -53,12 +55,12 @@ export default function Home() {
             setLoading(false)
             return
         }
-        // Simulate cover letter generation
+
         const selectedToneLabel = toneOptions.find((opt) => opt.value === tone)?.label || tone
 
         try {
             const result = await generateCoverLetter(resumeText, jobText, tone)
-            console.log('generated cover letter: ', result)
+            console.log('generated cover letter: ', result.coverLetter)
             setCoverLetter(result.coverLetter)
             setLoading(false)
         } catch (error) {
@@ -67,6 +69,25 @@ export default function Home() {
             setLoading(false)
             return
         }
+    }
+
+    const CoverLetterDisplay = ({ content }: { content: string }) => {
+        return (
+            <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Generated Cover Letter
+                </label>
+                <div
+                    className="w-full min-h-[200px] p-4 bg-white border border-gray-300 rounded-md whitespace-pre-wrap font-mono text-sm text-gray-700"
+                    style={{
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                    }}
+                >
+                    {content}
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -177,12 +198,7 @@ export default function Home() {
                         )}
                     </button>
                 </div>
-                {coverLetter && (
-                    <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded shadow-sm animate-fade-in">
-                        <h2 className="font-semibold mb-2 text-blue-700">Generated Cover Letter</h2>
-                        <pre className="whitespace-pre-wrap text-gray-800">{coverLetter}</pre>
-                    </div>
-                )}
+                {coverLetter && <CoverLetterDisplay content={coverLetter} />}
             </div>
         </div>
     )
