@@ -1,7 +1,6 @@
 'use client'
 import React, { useState } from 'react'
-import Image from 'next/image'
-import AnalyzingStep from './components/AnalyzingStep'
+import { generateCoverLetter } from './lib/api'
 
 type Step =
     | 'start'
@@ -56,12 +55,18 @@ export default function Home() {
         }
         // Simulate cover letter generation
         const selectedToneLabel = toneOptions.find((opt) => opt.value === tone)?.label || tone
-        setTimeout(() => {
-            setCoverLetter(
-                `(${selectedToneLabel} tone)\nYour personalized cover letter goes here...`
-            )
+
+        try {
+            const result = await generateCoverLetter(resumeText, jobText, tone)
+            console.log('generated cover letter: ', result)
+            setCoverLetter(result.coverLetter)
             setLoading(false)
-        }, 1000)
+        } catch (error) {
+            console.error('Error generating cover letter', error)
+            setError('Failed to generate cover letter')
+            setLoading(false)
+            return
+        }
     }
 
     return (
