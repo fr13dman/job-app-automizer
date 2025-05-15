@@ -1,6 +1,5 @@
 [build]
   command = "cd frontend/job-app-website && npm install && npm run build"
-  publish = "frontend/job-app-website/.next"
   base = "frontend/job-app-website"
 
 [build.environment]
@@ -8,8 +7,3 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
