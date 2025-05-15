@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "cd frontend/job-app-website && npm install && npm run build"
   publish = "frontend/job-app-website/.next"
   base = "frontend/job-app-website"
 
