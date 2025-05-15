@@ -2,8 +2,9 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
     /* config options here */
+    output: 'standalone',
     distDir: 'frontend/job-app-website/.next',
-    basePath: 'frontend/job-app-website',
+    basePath: '',
 }
 
 export default nextConfig
