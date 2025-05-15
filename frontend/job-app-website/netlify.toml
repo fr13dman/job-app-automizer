@@ -1,7 +1,6 @@
-// netlify.toml
 [build]
   command = "npm run build"
-  publish = ".next"
+  publish = "frontend/job-app-website/.next"
   base = "frontend/job-app-website"
 
 [build.environment]
