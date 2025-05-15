@@ -141,7 +141,7 @@ export default function Home() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100">
-            <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-2xl">
+            <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl mt-8 mb-8">
                 <h1 className="text-3xl font-extrabold text-center mb-2 text-blue-700 drop-shadow">
                     Cover Letter Generator
                 </h1>
@@ -172,12 +172,15 @@ export default function Home() {
                         </button>
                     </div>
                     {resumeInputMode === 'text' ? (
-                        <textarea
-                            className="w-full border rounded p-2 min-h-[120px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
-                            placeholder="Paste your resume content here..."
-                            value={resumeText}
-                            onChange={(e) => setResumeText(e.target.value)}
-                        />
+                        <div className="mb-4">
+                            <label className="font-medium text-gray-500">Resume Content</label>
+                            <textarea
+                                className="w-full border rounded p-2 min-h-[120px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
+                                placeholder="Paste your resume content here..."
+                                value={resumeText}
+                                onChange={(e) => setResumeText(e.target.value)}
+                            />
+                        </div>
                     ) : (
                         <input
                             type="file"
