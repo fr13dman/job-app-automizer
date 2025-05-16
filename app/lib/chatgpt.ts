@@ -12,6 +12,20 @@ interface GenerateCoverLetterParams {
     additionalParameters?: string[] // optional parameters to include in the cover letter
 }
 
+export class OpenAIError extends Error {
+    constructor(message: string, public originalError?: unknown, public statusCode?: number) {
+        super(message)
+        this.name = 'OpenAIError'
+    }
+}
+
+export class ContentGenerationError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = 'ContentGenerationError'
+    }
+}
+
 // Generate a cover letter using the OpenAI API
 export const generateCoverLetter = async (params: GenerateCoverLetterParams) => {
     // Construct the system prompt
@@ -40,13 +54,37 @@ export const generateCoverLetter = async (params: GenerateCoverLetterParams) => 
         })
         const content = response.choices[0].message.content
         if (!content) {
-            console.error('No content received from OpenAI')
-            throw new Error('No content received from OpenAI')
+            throw new ContentGenerationError('No content received from OpenAI')
         }
 
         return content
     } catch (error) {
-        console.error('Error generating cover letter:', error)
-        throw new Error('Failed to generate cover letter: ' + error)
+        // Handle OpenAI API errors
+        if (error instanceof OpenAI.APIError) {
+            console.error('OpenAI API Error:', {
+                status: error.status,
+                message: error.message,
+                type: error.type,
+                code: error.code,
+            })
+            throw new OpenAIError(`OpenAI API Error: ${error.message}`, error, error.status)
+        }
+
+        // Handle network errors
+        if (error instanceof Error) {
+            console.error('Network or other error:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+            })
+            throw new OpenAIError(`Failed to generate cover letter: ${error.message}`, error)
+        }
+
+        // Handle unknown errors
+        console.error('Unknown error:', error)
+        throw new OpenAIError(
+            'An unexpected error occurred while generating the cover letter',
+            error
+        )
     }
 }
