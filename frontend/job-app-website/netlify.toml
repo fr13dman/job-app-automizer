@@ -1,6 +1,7 @@
 [build]
-  command = "cd frontend/job-app-website && npm install && npm run build"
-  base = ""
+  command = "npm install && npm run build"
+  base = "frontend/job-app-website"
+  publish = ".next"
 
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"
