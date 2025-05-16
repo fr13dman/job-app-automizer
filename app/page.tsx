@@ -2,18 +2,6 @@
 import React, { useState } from 'react'
 import { generateCoverLetter } from './lib/api'
 
-type Step =
-    | 'start'
-    | 'uploadResume'
-    | 'jobLink'
-    | 'analyzing'
-    | 'improvements'
-    | 'selectTone'
-    | 'coverLetter'
-    | 'error'
-
-const TONES = ['Professional', 'Friendly', 'Creative', 'Confident', 'Formal']
-
 export default function Home() {
     const [resumeInputMode, setResumeInputMode] = useState<'text' | 'file'>('text')
     const [resumeText, setResumeText] = useState('')
@@ -55,8 +43,6 @@ export default function Home() {
             setLoading(false)
             return
         }
-
-        const selectedToneLabel = toneOptions.find((opt) => opt.value === tone)?.label || tone
 
         try {
             const result = await generateCoverLetter(resumeText, jobText, tone)
@@ -250,6 +236,7 @@ export default function Home() {
                         )}
                     </button>
                 </div>
+                {error && <div className="text-red-500 mt-2 mb-4 text-center">{error}</div>}
                 {coverLetter && <CoverLetterDisplay content={coverLetter} />}
             </div>
         </div>

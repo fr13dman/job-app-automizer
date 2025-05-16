@@ -44,13 +44,7 @@ export const generateCoverLetter = async (params: GenerateCoverLetterParams) => 
             throw new Error('No content received from OpenAI')
         }
 
-        try {
-            // console.log('generated cover letter from openai: ', content)
-            return content
-        } catch (e) {
-            console.error('Failed to parse OpenAI response:', content)
-            throw new Error('Invalid response format from OpenAI')
-        }
+        return content
     } catch (error) {
         console.error('Error generating cover letter:', error)
         throw new Error('Failed to generate cover letter: ' + error)

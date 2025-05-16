@@ -47,8 +47,7 @@ export async function POST(request: NextRequest) {
             additionalParameters,
         })
 
-        console.log('cover letter generated successfully: ', response)
-
+        // console.log('cover letter generated successfully: ', response)
         // Return cover letter
         // Return with coverLetter field to match frontend expectation
         return NextResponse.json({
