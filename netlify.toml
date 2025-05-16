@@ -1,6 +1,6 @@
 [build]
   command = "npm install && npm run build"
-  base = "frontend/job-app-website"
+  base = ""
   publish = ".next"
 
 [build.environment]
