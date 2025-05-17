@@ -45,7 +45,8 @@ export const validateInput = (input: string): { isValid: boolean; error?: string
     }
 
     // 4. Check for excessive special characters
-    const specialCharRatio = (input.match(/[^a-zA-Z0-9\s.,!?-]/g) || []).length / input.length
+    const specialCharRatio =
+        (input.match(/[^a-zA-Z0-9\s.,!?@\-\/\:_]/g) || []).length / input.length
     if (specialCharRatio > 0.3) {
         // 30% threshold
         return {
@@ -55,13 +56,13 @@ export const validateInput = (input: string): { isValid: boolean; error?: string
     }
 
     //  5. Check for repeated characters (potential spam)
-    const repeatedChars = input.match(/(.)\1{10,}/g) // 10+ repeated characters
-    if (repeatedChars) {
-        return {
-            isValid: false,
-            error: 'Input contains suspicious patterns',
-        }
-    }
+    // const repeatedChars = input.trim().match(/(.)\1{10,}/g) // 10+ repeated characters
+    // if (repeatedChars) {
+    //     return {
+    //         isValid: false,
+    //         error: 'Input contains suspicious patterns',
+    //     }
+    // }
 
     return { isValid: true }
 }
