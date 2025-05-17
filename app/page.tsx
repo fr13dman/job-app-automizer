@@ -51,7 +51,7 @@ export default function Home() {
             setLoading(false)
         } catch (error) {
             console.error('Error generating cover letter', error)
-            setError('Failed to generate cover letter')
+            setError(error instanceof Error ? error.message : 'An unknown error occurred')
             setLoading(false)
             return
         }

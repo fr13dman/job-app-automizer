@@ -1,7 +1,6 @@
 import OpenAI from 'openai'
 
 const openai = new OpenAI({
-    baseURL: 'https://api.openai.com/v1',
     apiKey: process.env['OPENAI_API_KEY'],
 })
 
@@ -77,13 +76,16 @@ export const generateCoverLetter = async (params: GenerateCoverLetterParams) => 
                 message: error.message,
                 stack: error.stack,
             })
-            throw new OpenAIError(`Failed to generate cover letter: ${error.message}`, error)
+            throw new OpenAIError(
+                `Failed to generate cover letter calling OpenAI: ${error.message}`,
+                error
+            )
         }
 
         // Handle unknown errors
         console.error('Unknown error:', error)
         throw new OpenAIError(
-            'An unexpected error occurred while generating the cover letter',
+            'An unexpected error occurred while generating the cover letter calling OpenAI...',
             error
         )
     }

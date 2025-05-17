@@ -54,14 +54,14 @@ export const validateInput = (input: string): { isValid: boolean; error?: string
         }
     }
 
-    // 5. Check for repeated characters (potential spam)
-    // const repeatedChars = input.match(/(.)\1{10,}/g) // 10+ repeated characters
-    // if (repeatedChars) {
-    //     return {
-    //         isValid: false,
-    //         error: 'Input contains suspicious patterns',
-    //     }
-    // }
+    //  5. Check for repeated characters (potential spam)
+    const repeatedChars = input.match(/(.)\1{10,}/g) // 10+ repeated characters
+    if (repeatedChars) {
+        return {
+            isValid: false,
+            error: 'Input contains suspicious patterns',
+        }
+    }
 
     return { isValid: true }
 }
