@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateCoverLetter, OpenAIError, ContentGenerationError } from '@/app/lib/chatgpt'
-import { validateInput } from '@/app/lib/validation'
-
-// const API_URL = process.env.API_URL || 'http://localhost:3001'
+import { generateCoverLetter, OpenAIError, ContentGenerationError } from '../../lib/chatgpt'
+import { validateInput } from '../../lib/validation'
 
 // Custom error class for API-specific errors
 class APIError extends Error {
@@ -49,13 +47,6 @@ export async function POST(request: NextRequest) {
             '# ADDITIONAL INSTRUCTIONS\n- Include a call to action to apply to the job',
         ]
 
-        // Generate cover letter
-        console.log('Generating cover letter with params:', {
-            resumeLength: resume.length,
-            jobDescriptionLength: jobDescription.length,
-            tone,
-        })
-
         const response = await generateCoverLetter({
             resume,
             jobDescription,
@@ -69,18 +60,20 @@ export async function POST(request: NextRequest) {
         })
     } catch (error) {
         // Log the full error for debugging
-        console.error('API Error:', {
-            name: error instanceof Error ? error.name : 'Unknown',
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            details: error instanceof APIError ? error.details : undefined,
-        })
+        // console.error('API Error:', {
+        //     name: error instanceof Error ? error.name : 'Unknown',
+        //     message: error instanceof Error ? error.message : 'Unknown error',
+        //     stack: error instanceof Error ? error.stack : undefined,
+        //     details: error instanceof APIError ? error.details : undefined,
+        // })
 
         // Handle different types of errors
         if (error instanceof APIError) {
             return NextResponse.json(
                 {
-                    error: error.message,
+                    success: false,
+                    error: 'API Error',
+                    message: error.message,
                     details: error.details,
                 },
                 { status: error.statusCode }
@@ -90,6 +83,7 @@ export async function POST(request: NextRequest) {
         if (error instanceof OpenAIError) {
             return NextResponse.json(
                 {
+                    success: false,
                     error: 'OpenAI API Error',
                     message: error.message,
                     statusCode: error.statusCode,
@@ -101,6 +95,7 @@ export async function POST(request: NextRequest) {
         if (error instanceof ContentGenerationError) {
             return NextResponse.json(
                 {
+                    success: false,
                     error: 'Content Generation Error',
                     message: error.message,
                 },
@@ -111,6 +106,7 @@ export async function POST(request: NextRequest) {
         // Handle unknown errors
         return NextResponse.json(
             {
+                success: false,
                 error: 'Internal Server Error',
                 message: error instanceof Error ? error.message : 'An unexpected error occurred',
             },

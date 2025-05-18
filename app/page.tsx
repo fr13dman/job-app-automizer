@@ -47,10 +47,16 @@ export default function Home() {
         try {
             const result = await generateCoverLetter(resumeText, jobText, tone)
             console.log('generated cover letter: ', result.coverLetter)
-            setCoverLetter(result.coverLetter)
+
+            if (result.success) {
+                setCoverLetter(result.coverLetter)
+            } else {
+                setError(result.error.message)
+            }
+
             setLoading(false)
         } catch (error) {
-            console.error('Error generating cover letter', error)
+            // console.error('Error generating cover letter', error)
             setError(error instanceof Error ? error.message : 'An unknown error occurred')
             setLoading(false)
             return
