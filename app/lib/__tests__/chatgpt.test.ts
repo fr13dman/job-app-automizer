@@ -1,4 +1,4 @@
-import { ContentGenerationError, generateCoverLetter } from '../chatgpt'
+import { generateCoverLetter } from '../chatgpt'
 
 jest.mock('openai', () => {
     const mockOpenAI = {
