@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from 'react'
-import { generateCoverLetter } from './lib/api'
+import { generateCoverLetter } from './lib/generateCoverLetter'
+import { extractJobDataFromPage } from './lib/extractJobDataFromPage'
 
 export default function Home() {
     const [resumeInputMode, setResumeInputMode] = useState<'text' | 'file'>('text')
@@ -44,9 +45,47 @@ export default function Home() {
             return
         }
 
+        let jobDescription = jobText
+
+        // Validate jobLink or check if it's a valid career page
+        if (
+            jobDescription.trim().startsWith('https://') ||
+            jobDescription.trim().startsWith('http://')
+        ) {
+            try {
+                console.log(`Found job link ${jobDescription} now extracting job data...`)
+                // Validate jobLink is a valid career page by fetching the page
+                const jobData = await extractJobDataFromPage(jobDescription)
+                if (!jobData.isJobPage) {
+                    setError(
+                        `Please provide a valid job link or description: Reason: ${jobData.error}`
+                    )
+                    setLoading(false)
+                    return
+                }
+            } catch (error) {
+                setError(
+                    `Please provide a valid job link or description: Reason: ${
+                        error instanceof Error ? error.message : 'Unknown error'
+                    }`
+                )
+                setLoading(false)
+                return
+            }
+        } else {
+            // If it's not a link, check if it's a valid job description
+            if (!jobDescription.trim()) {
+                setError('Please provide a valid job link or description.')
+                setLoading(false)
+                return
+            }
+        }
+
+        console.log('Job description: ', jobDescription)
+
         try {
-            const result = await generateCoverLetter(resumeText, jobText, tone)
-            console.log('generated cover letter: ', result.coverLetter)
+            const result = await generateCoverLetter(resumeText, jobDescription, tone)
+            console.log('Generated cover letter: ', result.coverLetter)
 
             if (result.success) {
                 setCoverLetter(result.coverLetter)
