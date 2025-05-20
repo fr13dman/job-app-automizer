@@ -45,7 +45,7 @@ export default function Home() {
             return
         }
 
-        let jobDescription = jobText
+        const jobDescription = jobText
 
         // Validate jobLink or check if it's a valid career page
         if (
