@@ -11,7 +11,9 @@ export async function generateCoverLetter(resume: string, jobDescription: string
     // If the response is not ok, throw an error
     if (!response.ok) {
         const errorData = await response.json()
-        throw new Error('Failed to generate cover letter. Error: ' + errorData.message)
+        const prettyJsonStringWithTabs = JSON.stringify(errorData, null, '\t')
+        console.error('Failed to generate cover letter. Error: ' + prettyJsonStringWithTabs)
+        throw new Error('Failed to generate cover letter. Error: ' + prettyJsonStringWithTabs)
     }
 
     // If the response is ok, return the response
@@ -19,6 +21,8 @@ export async function generateCoverLetter(resume: string, jobDescription: string
     if (result.success) {
         return result
     } else {
+        const prettyJsonStringWithTabs = JSON.stringify(result, null, '\t')
+        console.error('Failed to generate cover letter. Error: ' + prettyJsonStringWithTabs)
         throw new Error('Failed to generate cover letter. Error: ' + result.message)
     }
 }
