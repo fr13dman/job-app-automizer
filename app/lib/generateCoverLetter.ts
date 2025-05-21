@@ -23,6 +23,6 @@ export async function generateCoverLetter(resume: string, jobDescription: string
     } else {
         const prettyJsonStringWithTabs = JSON.stringify(result, null, '\t')
         console.error('Failed to generate cover letter. Error: ' + prettyJsonStringWithTabs)
-        throw new Error('Failed to generate cover letter. Error: ' + result.message)
+        throw new Error('Failed to generate cover letter. Error: ' + prettyJsonStringWithTabs)
     }
 }

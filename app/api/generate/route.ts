@@ -60,12 +60,12 @@ export async function POST(request: NextRequest) {
         })
     } catch (error) {
         // Log the full error for debugging
-        // console.error('API Error:', {
-        //     name: error instanceof Error ? error.name : 'Unknown',
-        //     message: error instanceof Error ? error.message : 'Unknown error',
-        //     stack: error instanceof Error ? error.stack : undefined,
-        //     details: error instanceof APIError ? error.details : undefined,
-        // })
+        console.error('Error:', {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            details: error instanceof APIError ? error.details : undefined,
+        })
 
         // Handle different types of errors
         if (error instanceof APIError) {
