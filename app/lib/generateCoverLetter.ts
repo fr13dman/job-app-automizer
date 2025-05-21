@@ -1,6 +1,7 @@
 // Function to generate a cover letter calling route.ts
 export async function generateCoverLetter(resume: string, jobDescription: string, tone: string) {
-    const response = await fetch('/api/generate', {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://jobappautomizerz.netlify.app'
+    const response = await fetch(`${baseUrl}/api/generate`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
