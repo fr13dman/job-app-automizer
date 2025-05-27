@@ -10,6 +10,20 @@ class APIError extends Error {
     }
 }
 
+// Add CORS headers to the response
+function corsHeaders() {
+    return {
+        'Access-Control-Allow-Origin': '*', // Or specify your domain: 'http://localhost:3000'
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    }
+}
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+    return NextResponse.json({}, { headers: corsHeaders() })
+}
+
 export async function POST(request: NextRequest) {
     try {
         // Get resume, job description, and tone from request body
@@ -24,18 +38,14 @@ export async function POST(request: NextRequest) {
         // Backend validation for security
         const resumeValidation = validateInput(resume)
         if (!resumeValidation.isValid) {
-            throw new APIError(`Resume validation failed: ${resumeValidation.error}`, 400, {
-                field: 'resume',
-                details: resumeValidation.error,
-            })
+            throw new APIError(`Resume validation failed: ${resumeValidation.error}`, 400)
         }
 
         const jobDescriptionValidation = validateInput(jobDescription)
         if (!jobDescriptionValidation.isValid) {
             throw new APIError(
                 `Job description validation failed: ${jobDescriptionValidation.error}`,
-                400,
-                { field: 'jobDescription', details: jobDescriptionValidation.error }
+                400
             )
         }
 
@@ -54,18 +64,21 @@ export async function POST(request: NextRequest) {
             additionalParameters,
         })
 
-        return NextResponse.json({
-            success: true,
-            coverLetter: response,
-        })
+        return NextResponse.json(
+            {
+                success: true,
+                coverLetter: response,
+            },
+            { headers: corsHeaders() }
+        )
     } catch (error) {
         // Log the full error for debugging
-        console.error('Error:', {
-            name: error instanceof Error ? error.name : 'Unknown',
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            details: error instanceof APIError ? error.details : undefined,
-        })
+        // console.error('Error:', {
+        //     name: error instanceof Error ? error.name : 'Unknown',
+        //     message: error instanceof Error ? error.message : 'Unknown error',
+        //     stack: error instanceof Error ? error.stack : undefined,
+        //     details: error instanceof APIError ? error.details : undefined,
+        // })
 
         // Handle different types of errors
         if (error instanceof APIError) {
@@ -74,9 +87,8 @@ export async function POST(request: NextRequest) {
                     success: false,
                     error: 'API Error',
                     message: error.message,
-                    details: error.details,
                 },
-                { status: error.statusCode }
+                { status: error.statusCode, statusText: error.message, headers: corsHeaders() }
             )
         }
 
@@ -88,7 +100,11 @@ export async function POST(request: NextRequest) {
                     message: error.message,
                     statusCode: error.statusCode,
                 },
-                { status: error.statusCode || 500 }
+                {
+                    status: error.statusCode || 500,
+                    statusText: error.message,
+                    headers: corsHeaders(),
+                }
             )
         }
 
@@ -99,7 +115,7 @@ export async function POST(request: NextRequest) {
                     error: 'Content Generation Error',
                     message: error.message,
                 },
-                { status: 500 }
+                { status: 500, statusText: error.message, headers: corsHeaders() }
             )
         }
 
@@ -110,7 +126,11 @@ export async function POST(request: NextRequest) {
                 error: 'Internal Server Error',
                 message: error instanceof Error ? error.message : 'An unexpected error occurred',
             },
-            { status: 500 }
+            {
+                status: 500,
+                statusText: error instanceof Error ? error.message : 'An unexpected error occurred',
+                headers: corsHeaders(),
+            }
         )
     }
 }

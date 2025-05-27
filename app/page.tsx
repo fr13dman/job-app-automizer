@@ -45,7 +45,7 @@ export default function Home() {
             return
         }
 
-        const jobDescription = jobText
+        let jobDescription = jobText
 
         // Validate jobLink or check if it's a valid career page
         if (
@@ -63,6 +63,10 @@ export default function Home() {
                     setLoading(false)
                     return
                 }
+
+                jobDescription =
+                    jobData.description ||
+                    jobData.sections.map((section) => section.content).join('\n')
             } catch (error) {
                 setError(
                     `Please provide a valid job link or description: Reason: ${
@@ -87,10 +91,10 @@ export default function Home() {
             const result = await generateCoverLetter(resumeText, jobDescription, tone)
             console.log('Generated cover letter: ', result.coverLetter)
 
-            if (result.success) {
+            if (result.success && result.coverLetter) {
                 setCoverLetter(result.coverLetter)
             } else {
-                setError(result.error.message)
+                setError(result.error || 'An unknown error occurred')
             }
 
             setLoading(false)

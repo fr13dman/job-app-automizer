@@ -39,7 +39,7 @@ export const validateInput = (input: string): { isValid: boolean; error?: string
         if (pattern.test(input)) {
             return {
                 isValid: false,
-                error: 'Input contains potentially malicious content',
+                error: 'Input contains potentially malicious content. Pattern: ' + pattern.source,
             }
         }
     }
