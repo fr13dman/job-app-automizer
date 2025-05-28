@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import util from 'util'
 import logger from './logger'
 
 interface JobSection {
@@ -56,7 +57,8 @@ export async function extractJobDataFromPage(url: string): Promise<JobData> {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
-            let errorMessage = 'Failed to extract job data. Check the URL and try again. '
+            let errorMessage =
+                'Failed to extract job data. Check the URL and try again. If the problem persists, paste the site contents and try again.\n'
 
             // Handle specific HTTP status codes
             switch (response.status) {
@@ -197,6 +199,10 @@ function isJobPage($: cheerio.CheerioAPI): boolean {
     ]
 
     const pageText = $('body').text().toLowerCase()
+    logger.debug({
+        msg: 'Checking if page is a job listing',
+        pageText,
+    })
     return jobIndicators.some((term) => pageText.includes(term))
 }
 
@@ -213,6 +219,7 @@ function extractJobContent($: cheerio.CheerioAPI): Partial<JobData> {
                 '#job-description',
                 '[class*="job-description"]',
                 '[class*="description"]',
+                '[id^="job-details"]',
             ],
         },
         {
@@ -224,6 +231,7 @@ function extractJobContent($: cheerio.CheerioAPI): Partial<JobData> {
                 '#requirements',
                 '[class*="requirements"]',
                 '[class*="qualifications"]',
+                '[id^="requirements"]',
             ],
         },
         {
@@ -233,6 +241,7 @@ function extractJobContent($: cheerio.CheerioAPI): Partial<JobData> {
                 '.responsibilities',
                 '#responsibilities',
                 '[class*="responsibilities"]',
+                '[id^="responsibilities"]',
             ],
         },
         {
@@ -244,6 +253,7 @@ function extractJobContent($: cheerio.CheerioAPI): Partial<JobData> {
                 '#benefits',
                 '[class*="benefits"]',
                 '[class*="perks"]',
+                '[id^="benefits"]',
             ],
         },
         {
@@ -255,6 +265,7 @@ function extractJobContent($: cheerio.CheerioAPI): Partial<JobData> {
                 '#about-company',
                 '[class*="about-company"]',
                 '[class*="company-description"]',
+                '[id^="about-company"]',
             ],
         },
     ]
@@ -270,6 +281,11 @@ function extractJobContent($: cheerio.CheerioAPI): Partial<JobData> {
                 // Get the text content, removing extra whitespace
                 const content = element.text().trim().replace(/\s+/g, ' ')
                 if (content) {
+                    logger.debug({
+                        msg: 'Found section',
+                        title: pattern.title,
+                        content,
+                    })
                     sections.push({
                         title: pattern.title,
                         content,
@@ -298,6 +314,11 @@ function extractJobContent($: cheerio.CheerioAPI): Partial<JobData> {
             }
 
             if (content.trim()) {
+                logger.debug({
+                    msg: 'Found section',
+                    title,
+                    content: content.trim(),
+                })
                 sections.push({
                     title,
                     content: content.trim(),
@@ -322,7 +343,16 @@ function extractJobContent($: cheerio.CheerioAPI): Partial<JobData> {
     const responsibilities =
         sections.find((section) => section.title.toLowerCase().includes('responsibilit'))
             ?.content || ''
-
+    logger.debug({
+        msg: 'Extracted job data',
+        title,
+        company,
+        location,
+        description,
+        requirements,
+        responsibilities,
+        sections,
+    })
     return {
         title,
         company,
@@ -387,6 +417,7 @@ function extractLocation($: cheerio.CheerioAPI): string | null {
         '.location',
         '[class*="location"]',
         '[class*="job-location"]',
+        '[class*="job-details-preferences-and-skills"]',
     ]
 
     for (const selector of locationSelectors) {
