@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resilientFetch } from '../../lib/fetchRetry'
+import logger from '../../lib/logger'
 
 interface FetchJobResponse {
     success: boolean
@@ -35,10 +36,10 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ html: response, statusCode: 200 })
     } catch (error) {
-        console.error(
-            'Error fetching job data:',
-            error instanceof Error ? error.message : 'Unknown error'
-        )
+        logger.error({
+            msg: 'Error fetching job data',
+            error: error instanceof Error ? error.message : 'Unknown error',
+        })
         throw error
     }
 }

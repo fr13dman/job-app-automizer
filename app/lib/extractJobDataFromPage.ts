@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import logger from './logger'
 
 interface JobSection {
     title: string
@@ -99,7 +100,10 @@ export async function extractJobDataFromPage(url: string): Promise<JobData> {
         }
 
         // Check if it's a job page
-        console.log('called isJobPage.... ', $('body').text())
+        logger.debug({
+            msg: 'Checking if page is a job listing',
+            bodyText: $('body').text(),
+        })
         if (!isJobPage($)) {
             return {
                 ...jobDataResult,
@@ -111,8 +115,10 @@ export async function extractJobDataFromPage(url: string): Promise<JobData> {
 
         // Extract job data
         const extractedData = extractJobContent($)
-
-        // console.log('Extracted job data: ', extractedData)
+        logger.debug({
+            msg: 'Extracted job data',
+            data: extractedData,
+        })
 
         return {
             ...jobDataResult,
@@ -124,17 +130,29 @@ export async function extractJobDataFromPage(url: string): Promise<JobData> {
 
         if (error instanceof Error) {
             if (error.name === 'AbortError') {
+                logger.error({
+                    msg: 'Request timed out',
+                    timeout: 15000,
+                })
                 return {
                     ...jobDataResult,
                     error: 'Request timed out after 15 seconds',
                 }
             }
+            logger.error({
+                msg: 'Failed to extract job data',
+                error: error.message,
+            })
             return {
                 ...jobDataResult,
                 error: `Failed to extract job data: ${error.message}`,
             }
         }
 
+        logger.error({
+            msg: 'Failed to extract job data',
+            error: error instanceof Error ? error.message : 'Unknown error',
+        })
         return {
             ...jobDataResult,
             error: `Failed to extract job data: ${
@@ -155,7 +173,11 @@ function isValidUrl(url: string): boolean {
 
 function checkLength(html: string, maxLength: number): boolean {
     if (html.length > maxLength) {
-        console.log('HTML is too long ', html.length)
+        logger.warn({
+            msg: 'HTML content exceeds maximum length',
+            length: html.length,
+            maxLength,
+        })
         return false
     }
     return true
@@ -327,7 +349,11 @@ function extractJobTitle($: cheerio.CheerioAPI): string | null {
         const element = $(selector)
         if (element.length > 0) {
             const title = element.first().text().trim()
-            console.log('called extractJobTitle.... ', title)
+            logger.debug({
+                msg: 'Found job title',
+                title,
+                selector,
+            })
             if (title) return title
         }
     }

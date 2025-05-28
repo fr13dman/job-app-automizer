@@ -1,3 +1,5 @@
+import logger from './logger'
+
 interface RetryConfig {
     maxRetries: number
     initialDelay: number
@@ -78,7 +80,7 @@ export async function resilientFetch<T>(
                 error.status = response.status
                 error.isRetryable = response.status >= 500
                 error.message = `HTTP error! status: ${response.status} ${response.statusText}`
-                console.error('HTTP error! status: ' + response.status)
+                logger.error('HTTP error! status: ' + response.status)
                 throw error
             }
 
@@ -99,10 +101,10 @@ export async function resilientFetch<T>(
                 } catch (e) {
                     // If JSON parsing fails, try to get the text content
                     data = await response.text()
-                    console.warn(
-                        'Failed to parse JSON response, returning text instead ',
-                        e instanceof Error ? e.message : 'Unknown error'
-                    )
+                    logger.warn({
+                        msg: 'Failed to parse JSON response, returning text instead',
+                        error: e instanceof Error ? e.message : 'Unknown error',
+                    })
                 }
             } else {
                 // Default to text if content type is unknown
@@ -115,13 +117,13 @@ export async function resilientFetch<T>(
 
             // Don't retry if it's not a retryable error
             if (!isRetryableError(lastError)) {
-                console.error('Non-retryable error: ' + lastError.message)
+                logger.error('Non-retryable error: ' + lastError.message)
                 throw lastError
             }
 
             // Don't retry if we've hit the max retries
             if (retryCount === finalConfig.maxRetries) {
-                console.error('Max retries reached. Throwing error: ' + lastError.message)
+                logger.error('Max retries reached. Throwing error: ' + lastError.message)
                 throw lastError
             }
 
@@ -133,13 +135,15 @@ export async function resilientFetch<T>(
             )
 
             // Log retry attempt
-            console.warn(
-                `Retry attempt ${retryCount + 1}/${finalConfig.maxRetries} after ${backoffDelay}ms`,
-                { error: lastError.message }
-            )
+            logger.warn({
+                msg: `Retry attempt ${retryCount + 1}/${
+                    finalConfig.maxRetries
+                } after ${backoffDelay}ms`,
+                error: lastError.message,
+            })
 
             // Wait before retrying
-            console.log('Waiting for ' + backoffDelay + 'ms before retrying')
+            logger.info('Waiting for ' + backoffDelay + 'ms before retrying')
             await delay(backoffDelay)
             retryCount++
         }

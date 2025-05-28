@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateCoverLetter, OpenAIError, ContentGenerationError } from '../../lib/chatgpt'
 import { validateInput } from '../../lib/validation'
+import logger from '../../lib/logger'
 
 // Custom error class for API-specific errors
 class APIError extends Error {
@@ -73,12 +74,18 @@ export async function POST(request: NextRequest) {
         )
     } catch (error) {
         // Log the full error for debugging
-        // console.error('Error:', {
-        //     name: error instanceof Error ? error.name : 'Unknown',
-        //     message: error instanceof Error ? error.message : 'Unknown error',
-        //     stack: error instanceof Error ? error.stack : undefined,
-        //     details: error instanceof APIError ? error.details : undefined,
-        // })
+        logger.error({
+            msg: 'Error in generate API route',
+            error:
+                error instanceof Error
+                    ? {
+                          name: error.name,
+                          message: error.message,
+                          stack: error.stack,
+                      }
+                    : error,
+            details: error instanceof APIError ? error.details : undefined,
+        })
 
         // Handle different types of errors
         if (error instanceof APIError) {

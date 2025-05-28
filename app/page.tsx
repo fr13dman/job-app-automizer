@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import { generateCoverLetter } from './lib/generateCoverLetter'
 import { extractJobDataFromPage } from './lib/extractJobDataFromPage'
+import logger from './lib/logger'
 
 export default function Home() {
     const [resumeInputMode, setResumeInputMode] = useState<'text' | 'file'>('text')
@@ -53,7 +54,10 @@ export default function Home() {
             jobDescription.trim().startsWith('http://')
         ) {
             try {
-                console.log(`Found job link ${jobDescription} now extracting job data...`)
+                logger.debug({
+                    msg: `Found job link ${jobDescription} now extracting job data...`,
+                    isUrl: jobDescription.startsWith('http'),
+                })
                 // Validate jobLink is a valid career page by fetching the page
                 const jobData = await extractJobDataFromPage(jobDescription)
                 if (!jobData.isJobPage) {
@@ -85,11 +89,19 @@ export default function Home() {
             }
         }
 
-        console.log('Job description: ', jobDescription)
+        logger.debug({
+            msg: 'Processing job description',
+            isUrl: jobDescription.startsWith('http'),
+            length: jobDescription.length,
+        })
 
         try {
             const result = await generateCoverLetter(resumeText, jobDescription, tone)
-            console.log('Generated cover letter: ', result.coverLetter)
+            logger.debug({
+                msg: 'Generated cover letter',
+                success: result.success,
+                hasCoverLetter: !!result.coverLetter,
+            })
 
             if (result.success && result.coverLetter) {
                 setCoverLetter(result.coverLetter)
@@ -99,7 +111,10 @@ export default function Home() {
 
             setLoading(false)
         } catch (error) {
-            // console.error('Error generating cover letter', error)
+            logger.error({
+                msg: 'Error generating cover letter',
+                error: error instanceof Error ? error.message : 'Unknown error',
+            })
             setError(error instanceof Error ? error.message : 'An unknown error occurred')
             setLoading(false)
             return

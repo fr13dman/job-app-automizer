@@ -1,5 +1,24 @@
-import { OpenAI } from 'openai'
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+import OpenAI from 'openai'
+import logger from './logger'
+
+// Configure OpenAI with proper error handling and timeouts
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    maxRetries: 3,
+    timeout: 30000, // 30 seconds timeout
+    defaultQuery: { 'api-version': '2024-02-15-preview' },
+    defaultHeaders: { 'x-ms-useragent': 'job-app-automizer/1.0.0' },
+    // Disable worker threads
+    fetch: (url, options) => {
+        return fetch(url, {
+            ...options,
+            headers: {
+                ...options?.headers,
+                'x-ms-useragent': 'job-app-automizer/1.0.0',
+            },
+        })
+    },
+})
 
 interface GenerateCoverLetterParams {
     resume: string
@@ -33,31 +52,56 @@ export const generateCoverLetter = async (params: GenerateCoverLetterParams) => 
     ${params.additionalParameters?.join('\n')}`
     try {
         // Generate the cover letter with the following parameters
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [
-                {
-                    role: 'system',
-                    content: systemPrompt,
-                },
-                {
-                    role: 'user',
-                    content: `Resume: ${params.resume}\nJob Description: ${params.jobDescription}`,
-                },
-            ],
-            temperature: 0.5,
-            max_tokens: 3000,
-        })
+        const response = await openai.chat.completions.create(
+            {
+                model: 'gpt-4o-mini',
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemPrompt,
+                    },
+                    {
+                        role: 'user',
+                        content: `Resume: ${params.resume}\nJob Description: ${params.jobDescription}`,
+                    },
+                ],
+                temperature: 0.5,
+                max_tokens: 3000,
+            },
+            {
+                timeout: 25000, // 25 second timeout
+            }
+        )
         const content = response.choices[0].message.content
         if (!content) {
+            logger.error('OpenAI returned empty content')
             throw new ContentGenerationError('No content received from OpenAI')
         }
 
         return content
     } catch (error) {
+        // Enhanced error logging
+        logger.error({
+            msg: 'Error in generateCoverLetter',
+            error:
+                error instanceof Error
+                    ? {
+                          name: error.name,
+                          message: error.message,
+                          stack: error.stack,
+                      }
+                    : error,
+            params: {
+                resumeLength: params.resume.length,
+                jobDescriptionLength: params.jobDescription.length,
+                tone: params.tone,
+            },
+        })
+
         // Handle OpenAI API errors
         if (error instanceof OpenAI.APIError) {
-            console.error('OpenAI API Error:', {
+            logger.error({
+                msg: 'OpenAI API Error',
                 status: error.status,
                 message: error.message,
                 type: error.type,
@@ -68,7 +112,8 @@ export const generateCoverLetter = async (params: GenerateCoverLetterParams) => 
 
         // Handle network errors
         if (error instanceof Error) {
-            console.error('Network or other error:', {
+            logger.error({
+                msg: 'Network or other error',
                 name: error.name,
                 message: error.message,
                 stack: error.stack,
@@ -80,7 +125,10 @@ export const generateCoverLetter = async (params: GenerateCoverLetterParams) => 
         }
 
         // Handle unknown errors
-        console.error('Unknown error:', error)
+        logger.error({
+            msg: 'Unknown error',
+            error,
+        })
         throw new OpenAIError(
             'An unexpected error occurred while generating the cover letter calling OpenAI...',
             error
