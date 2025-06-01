@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { generateCoverLetter } from './lib/generateCoverLetter'
 import { extractJobDataFromPage } from './lib/extractJobDataFromPage'
 import logger from './lib/logger'
@@ -13,6 +13,9 @@ export default function Home() {
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const [coverLetter, setCoverLetter] = useState('')
+    const [autoExtract, setAutoExtract] = useState(false)
+    const [isExtracting, setIsExtracting] = useState(false)
+    const [showManualCopyGuidance, setShowManualCopyGuidance] = useState(false)
 
     const toneOptions = [
         { value: 'casual', label: 'Casual' },
@@ -21,6 +24,77 @@ export default function Home() {
         { value: 'friendly', label: 'Friendly' },
         { value: 'confident', label: 'Confident' },
     ]
+
+    useEffect(() => {
+        const extractJobData = async () => {
+            if (
+                !autoExtract &&
+                (!jobText.trim().startsWith('https://') || !jobText.trim().startsWith('http://'))
+            ) {
+                logger.debug({
+                    msg: 'Skipping job data extraction....',
+                    autoExtract,
+                    jobText,
+                })
+                return
+            }
+
+            setIsExtracting(true)
+            setError('')
+
+            try {
+                const jobData = await extractJobDataFromPage(jobText)
+                if (jobData.isJobPage) {
+                    if (!jobData.description || jobData.description.trim().length < 500) {
+                        setError(
+                            'Failed to extract job data. Please paste the job description manually. Reason: ' +
+                                'Unable to extract job description due issues parsing the page.'
+                        )
+                        setIsExtracting(false)
+                        return
+                    }
+
+                    logger.debug(
+                        'Job Description length: ' +
+                            (jobData.description ? jobData.description.trim().length : 'invalid??')
+                    )
+                    setJobText(
+                        jobData.description ||
+                            jobData.sections.map((section) => section.content).join('\n')
+                    )
+                    logger.debug({
+                        msg: 'Extracted job data: ',
+                        jobData,
+                        isJobPage: jobData.isJobPage,
+                        description: jobData.description,
+                        sections: jobData.sections,
+                    })
+                } else {
+                    if (jobData.error && jobData.error.includes('JavaScript')) {
+                        setShowManualCopyGuidance(true)
+                        setError(
+                            'This job page requires JavaScript to be enabled. Please paste the job description manually.'
+                        )
+                        setIsExtracting(false)
+                        return
+                    }
+                }
+            } catch (error) {
+                logger.error({
+                    msg: 'Failed to extract job data',
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                })
+                setError(
+                    'Failed to extract job data. Please paste the job description manually. Reason: ' +
+                        (error instanceof Error ? error.message : 'Unknown error')
+                )
+            } finally {
+                setIsExtracting(false)
+            }
+        }
+        const timeoutId = setTimeout(extractJobData, 500)
+        return () => clearTimeout(timeoutId)
+    }, [autoExtract, jobText])
 
     // Handle file upload and parse PDF if needed
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,8 +124,9 @@ export default function Home() {
 
         // Validate jobLink or check if it's a valid career page
         if (
-            jobDescription.trim().startsWith('https://') ||
-            jobDescription.trim().startsWith('http://')
+            !autoExtract &&
+            (jobDescription.trim().startsWith('https://') ||
+                jobDescription.trim().startsWith('http://'))
         ) {
             try {
                 logger.debug({
@@ -240,16 +315,78 @@ export default function Home() {
                         />
                     )}
                 </div>
-                <div className="mb-4">
-                    <label className="font-medium text-gray-500">Job Link or Description</label>
-                    <textarea
-                        className="w-full border rounded p-2 min-h-[80px] mt-1 focus:ring-2 focus:ring-blue-300 transition text-blue-700"
-                        placeholder="Paste the job link or description here..."
-                        value={jobText}
-                        onChange={(e) => setJobText(e.target.value)}
-                    />
-                </div>
 
+                <div className="mb-4">
+                    <div className="flex items-center justify-between">
+                        <label className="font-medium text-gray-500">Job Link or Description</label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="autoExtract"
+                                checked={autoExtract}
+                                onChange={(e) => setAutoExtract(e.target.checked)}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <label htmlFor="autoExtract" className="text-sm text-gray-600">
+                                Auto-extract from URL
+                            </label>
+                        </div>
+                    </div>
+                    <div className="relative">
+                        <textarea
+                            className="w-full border rounded p-2 min-h-[80px] mt-1 focus:ring-2 focus:ring-blue-300 transition text-blue-700"
+                            placeholder="Paste the job link or description here..."
+                            value={jobText}
+                            onChange={(e) => setJobText(e.target.value)}
+                        />
+                        {isExtracting && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded">
+                                <div className="flex items-center gap-2 text-blue-600">
+                                    <svg
+                                        className="animate-spin h-5 w-5"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                        ></circle>
+                                        <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                        ></path>
+                                    </svg>
+                                    <span>Extracting...</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    {showManualCopyGuidance && (
+                        <div className="mt-2 p-4 bg-blue-50 rounded-md border border-blue-200">
+                            <h3 className="text-sm font-medium text-blue-800 mb-2">
+                                How to copy the job description manually:
+                            </h3>
+                            <ol className="list-decimal list-inside text-sm text-blue-700 space-y-1">
+                                <li>Open the job posting in a new tab</li>
+                                <li>Wait for the page to load completely</li>
+                                <li>Select and copy the job description text</li>
+                                <li>Paste it directly into the text area above</li>
+                            </ol>
+                            <button
+                                onClick={() => setShowManualCopyGuidance(false)}
+                                className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    )}
+                </div>
                 <div className="flex flex-col sm:flex-row items-center gap-3 mt-4">
                     <select
                         className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-300 transition w-full sm:w-auto opacity-70 text-gray-700"

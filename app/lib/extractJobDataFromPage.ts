@@ -1,5 +1,4 @@
 import * as cheerio from 'cheerio'
-import util from 'util'
 import logger from './logger'
 
 interface JobSection {
@@ -18,6 +17,21 @@ interface JobData {
     url: string | null
     isJobPage: boolean
     error?: string
+}
+
+function isJavaScriptRequired(html: string): boolean {
+    const jsRequiredPatterns = [
+        'You need to enable JavaScript to run this app',
+        'Please enable JavaScript',
+        'JavaScript is required',
+        'This application requires JavaScript',
+        'enable JavaScript',
+        'requires JavaScript',
+        'noscript',
+        'script disabled',
+    ]
+
+    return jsRequiredPatterns.some((pattern) => html.toLowerCase().includes(pattern.toLowerCase()))
 }
 
 export async function extractJobDataFromPage(url: string): Promise<JobData> {
@@ -98,6 +112,17 @@ export async function extractJobDataFromPage(url: string): Promise<JobData> {
             return {
                 ...jobDataResult,
                 error: 'HTML is too long',
+            }
+        }
+
+        if (isJavaScriptRequired(html)) {
+            logger.warn({
+                msg: 'This job page requires JavaScript to be enabled.',
+                html,
+            })
+            return {
+                ...jobDataResult,
+                error: 'This job page requires JavaScript to be enabled. Please paste the job description manually.',
             }
         }
 
@@ -353,6 +378,26 @@ function extractJobContent($: cheerio.CheerioAPI): Partial<JobData> {
         responsibilities,
         sections,
     })
+
+    if (!description || description.trim().length < 500) {
+        logger.warn({
+            msg:
+                'Unable to extract job description due to parsing issues. Extracted description length: ' +
+                description.trim().length,
+            description,
+        })
+        return {
+            title,
+            company,
+            location,
+            description,
+            requirements,
+            responsibilities,
+            sections,
+            error: 'Unable to extract job description due to parsing issues. Please paste the job description manually.',
+        }
+    }
+
     return {
         title,
         company,
