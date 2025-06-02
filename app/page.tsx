@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react'
 import { generateCoverLetter } from './lib/generateCoverLetter'
 import { extractJobDataFromPage } from './lib/extractJobDataFromPage'
+import { ErrorHeader } from './components/ErrorHeader'
+import { SuccessHeader } from './components/SuccessHeader'
 import logger from './lib/logger'
 
 export default function Home() {
@@ -10,7 +12,8 @@ export default function Home() {
     const [resumeFile, setResumeFile] = useState<File | null>(null)
     const [jobText, setJobText] = useState('')
     const [tone, setTone] = useState('professional')
-    const [error, setError] = useState('')
+    const [error, setError] = useState<string | null>(null)
+    const [successMessage, setSuccessMessage] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [coverLetter, setCoverLetter] = useState('')
     const [autoExtract, setAutoExtract] = useState(false)
@@ -41,6 +44,7 @@ export default function Home() {
 
             setIsExtracting(true)
             setError('')
+            setSuccessMessage('')
 
             try {
                 const jobData = await extractJobDataFromPage(jobText)
@@ -60,7 +64,7 @@ export default function Home() {
                     )
                     setJobText(
                         jobData.description ||
-                            jobData.sections.map((section) => section.content).join('\n')
+                            jobData.sections.map((section) => section.content).join(' \n')
                     )
                     logger.debug({
                         msg: 'Extracted job data: ',
@@ -104,7 +108,8 @@ export default function Home() {
     }
 
     const handleGenerate = async () => {
-        setError('')
+        setError(null)
+        setSuccessMessage(null)
         setLoading(true)
         setCoverLetter('') // Reset cover letter text area
 
@@ -180,6 +185,7 @@ export default function Home() {
 
             if (result.success && result.coverLetter) {
                 setCoverLetter(result.coverLetter)
+                setSuccessMessage('Cover letter generated successfully')
             } else {
                 setError(result.error || 'An unknown error occurred')
             }
@@ -266,6 +272,8 @@ export default function Home() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100">
+            <ErrorHeader error={error} onClose={() => setError(null)} />
+            <SuccessHeader message={successMessage} onClose={() => setSuccessMessage(null)} />
             <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl mt-8 mb-8">
                 <h1 className="text-3xl font-extrabold text-center mb-2 text-blue-700 drop-shadow">
                     Cover Letter Generator
@@ -437,7 +445,6 @@ export default function Home() {
                         )}
                     </button>
                 </div>
-                {error && <div className="text-red-500 mt-2 mb-4 text-center">{error}</div>}
                 {coverLetter && <CoverLetterDisplay content={coverLetter} />}
             </div>
         </div>
