@@ -4,6 +4,8 @@ import { generateCoverLetter } from './lib/generateCoverLetter'
 import { extractJobDataFromPage } from './lib/extractJobDataFromPage'
 import { ErrorHeader } from './components/ErrorHeader'
 import { SuccessHeader } from './components/SuccessHeader'
+import { parsePDF, validatePDF } from './lib/pdfParser'
+import { StructuredResume } from './components/StructuredResume'
 import logger from './lib/logger'
 
 export default function Home() {
@@ -11,6 +13,7 @@ export default function Home() {
     const [resumeText, setResumeText] = useState('')
     const [resumeFile, setResumeFile] = useState<File | null>(null)
     const [jobText, setJobText] = useState('')
+    const [isParsingPDF, setIsParsingPDF] = useState(false)
     const [tone, setTone] = useState('professional')
     const [error, setError] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -27,6 +30,15 @@ export default function Home() {
         { value: 'friendly', label: 'Friendly' },
         { value: 'confident', label: 'Confident' },
     ]
+
+    const [resumeSections, setResumeSections] = useState<
+        Array<{
+            title: string
+            content: string
+            type: 'heading' | 'bullet' | 'paragraph'
+        }>
+    >([])
+    const [viewMode, setViewMode] = useState<'raw' | 'structured'>('structured')
 
     useEffect(() => {
         const extractJobData = async () => {
@@ -100,11 +112,69 @@ export default function Home() {
         return () => clearTimeout(timeoutId)
     }, [autoExtract, jobText])
 
-    // Handle file upload and parse PDF if needed
+    // Handle file upload and parse PDF
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] || null
         setResumeFile(file)
-        // Optionally, parse PDF here and setResumeText(parsedText)
+        setResumeText('')
+        setResumeSections([])
+
+        if (file) {
+            // Validate file first
+            const validation = validatePDF(file)
+            if (!validation.isValid) {
+                setError(validation.error || 'Invalid file')
+                return
+            }
+
+            setIsParsingPDF(true)
+            setError(null)
+
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
+
+                const response = await fetch('/api/parse-pdf', {
+                    method: 'POST',
+                    body: formData,
+                })
+
+                if (!response.ok) {
+                    const data = await response.json()
+                    throw new Error(data.error || 'Failed to parse PDF')
+                }
+
+                const { text, sections } = await response.json()
+                setResumeText(text)
+                setResumeSections(sections)
+            } catch (error) {
+                console.error('Error parsing PDF:', error)
+                setError(error instanceof Error ? error.message : 'Failed to parse PDF')
+            } finally {
+                setIsParsingPDF(false)
+            }
+        }
+    }
+
+    // Add handler for section changes
+    const handleSectionsChange = (
+        newSections: Array<{
+            title: string
+            content: string
+            type: 'heading' | 'bullet' | 'paragraph'
+        }>
+    ) => {
+        setResumeSections(newSections)
+        // Update the raw text as well
+        const rawText = newSections
+            .map((section) => {
+                if (section.type === 'heading') {
+                    return `\n${section.title}\n${section.content}`
+                }
+                return section.content
+            })
+            .join('\n\n')
+        setResumeText(rawText)
     }
 
     const handleGenerate = async () => {
@@ -306,21 +376,143 @@ export default function Home() {
                     </div>
                     {resumeInputMode === 'text' ? (
                         <div className="mb-4">
-                            <label className="font-medium text-gray-500">Resume Content</label>
-                            <textarea
-                                className="w-full border rounded p-2 min-h-[120px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
-                                placeholder="Paste your resume content here..."
-                                value={resumeText}
-                                onChange={(e) => setResumeText(e.target.value)}
-                            />
+                            {resumeSections.length > 0 ? (
+                                <div className="mt-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="text-lg font-semibold text-gray-700">
+                                            Resume Content
+                                        </h3>
+                                        <div className="flex gap-2">
+                                            <button
+                                                className={`px-3 py-1 rounded ${
+                                                    viewMode === 'structured'
+                                                        ? 'bg-blue-500 text-white'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
+                                                }`}
+                                                onClick={() => setViewMode('structured')}
+                                            >
+                                                Structured
+                                            </button>
+                                            <button
+                                                className={`px-3 py-1 rounded ${
+                                                    viewMode === 'raw'
+                                                        ? 'bg-blue-500 text-white'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
+                                                }`}
+                                                onClick={() => setViewMode('raw')}
+                                            >
+                                                Raw Text
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {viewMode === 'structured' ? (
+                                        <StructuredResume
+                                            sections={resumeSections}
+                                            onChange={handleSectionsChange}
+                                        />
+                                    ) : (
+                                        <textarea
+                                            className="w-full border rounded p-2 min-h-[200px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
+                                            value={resumeText}
+                                            onChange={(e) => setResumeText(e.target.value)}
+                                        />
+                                    )}
+                                </div>
+                            ) : (
+                                <textarea
+                                    className="w-full border rounded p-2 min-h-[120px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
+                                    placeholder="Paste your resume content here..."
+                                    value={resumeText}
+                                    onChange={(e) => setResumeText(e.target.value)}
+                                />
+                            )}
                         </div>
                     ) : (
-                        <input
-                            type="file"
-                            accept=".pdf,.doc,.docx"
-                            className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-300 transition"
-                            onChange={handleFileChange}
-                        />
+                        <div className="relative">
+                            <label className="font-medium text-gray-500 mb-2 block">
+                                Upload Resume (PDF)
+                            </label>
+                            <input
+                                type="file"
+                                accept=".pdf"
+                                className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-300 transition cursor-pointer"
+                                onChange={handleFileChange}
+                                disabled={isParsingPDF}
+                                onInput={handleFileChange}
+                            />
+                            {isParsingPDF && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded">
+                                    <div className="flex items-center gap-2 text-blue-600">
+                                        <svg
+                                            className="animate-spin h-5 w-5"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                            ></circle>
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            ></path>
+                                        </svg>
+                                        <span>Parsing PDF...</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {resumeSections.length > 0 && (
+                        <div className="mt-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="text-lg font-semibold text-gray-700">
+                                    Resume Content
+                                </h3>
+                                <div className="flex gap-2">
+                                    <button
+                                        className={`px-3 py-1 rounded ${
+                                            viewMode === 'structured'
+                                                ? 'bg-blue-500 text-white'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
+                                        }`}
+                                        onClick={() => setViewMode('structured')}
+                                    >
+                                        Structured
+                                    </button>
+                                    <button
+                                        className={`px-3 py-1 rounded ${
+                                            viewMode === 'raw'
+                                                ? 'bg-blue-500 text-white'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
+                                        }`}
+                                        onClick={() => setViewMode('raw')}
+                                    >
+                                        Raw Text
+                                    </button>
+                                </div>
+                            </div>
+
+                            {viewMode === 'structured' ? (
+                                <StructuredResume
+                                    sections={resumeSections}
+                                    onChange={handleSectionsChange}
+                                />
+                            ) : (
+                                <textarea
+                                    className="w-full border rounded p-2 min-h-[200px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
+                                    value={resumeText}
+                                    onChange={(e) => setResumeText(e.target.value)}
+                                />
+                            )}
+                        </div>
                     )}
                 </div>
 
