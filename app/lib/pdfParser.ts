@@ -2,6 +2,21 @@
 import PDFParser from 'pdf2json'
 import logger from './logger'
 
+interface PDFData {
+    Pages: Array<{
+        Texts: Array<{
+            R: Array<{
+                T: string
+            }>
+            y: number
+        }>
+    }>
+}
+
+interface PDFParserError {
+    parserError: Error
+}
+
 export function validatePDF(file: File): { isValid: boolean; error?: string } {
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
@@ -49,10 +64,10 @@ export async function parsePDF(file: File): Promise<{
         const buffer = Buffer.from(await file.arrayBuffer())
 
         // Parse PDF
-        const pdfParser = new (PDFParser as any)(null, 1)
+        const pdfParser = new (PDFParser as unknown as typeof PDFParser)(null, true)
 
         return new Promise((resolve, reject) => {
-            pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+            pdfParser.on('pdfParser_dataReady', (pdfData: PDFData) => {
                 try {
                     // Extract text from PDF
                     const text = pdfParser
@@ -85,13 +100,12 @@ export async function parsePDF(file: File): Promise<{
                     }> = []
 
                     // Process each page in the PDF
-                    pdfData.Pages.forEach((page: any) => {
+                    pdfData.Pages.forEach((page) => {
                         // Group text elements by their y-position (line)
                         const lines = new Map<number, string>()
 
-                        page.Texts.forEach((text: any) => {
+                        page.Texts.forEach((text) => {
                             const content = decodeURIComponent(text.R[0].T)
-                            // const y = Math.round(text.y) // Round to handle slight variations
                             const y = text.y
 
                             // Combine text elements on the same line
@@ -99,9 +113,9 @@ export async function parsePDF(file: File): Promise<{
                         })
 
                         // Sort lines by y-position (top to bottom)
-                        const sortedLines = Array.from(lines.entries())
-                            // .sort(([y1], [y2]) => y2 - y1)
-                            .map(([_, text]) => text.trim())
+                        const sortedLines = Array.from(lines.entries()).map(([, text]) =>
+                            text.trim()
+                        )
 
                         // Process lines to create sections
                         let currentSection: {
@@ -184,27 +198,24 @@ export async function parsePDF(file: File): Promise<{
                             content: section.content.trim(),
                         })),
                     })
-                } catch (error) {
-                    reject(new Error('Failed to extract text from PDF'))
+                } catch (err) {
+                    reject(new Error('Failed to extract text from PDF ' + err))
                 }
             })
 
-            pdfParser.on('pdfParser_dataError', (error: any) => {
+            pdfParser.on('pdfParser_dataError', (errMsg: PDFParserError) => {
                 logger.error({
                     msg: 'Error parsing PDF',
-                    error: error,
+                    error: errMsg.parserError,
                 })
-                reject(new Error('Failed to parse PDF. ' + error.message))
+                reject(new Error('Failed to parse PDF. ' + errMsg.parserError.message))
             })
 
             // Parse the buffer
             pdfParser.parseBuffer(buffer)
         })
-    } catch (error) {
-        console.error(
-            'Error parsing PDF:',
-            error instanceof Error ? error.message : 'Unknown error'
-        )
-        throw new Error('Failed to parse PDF. ' + (error as Error).message)
+    } catch (err) {
+        console.error('Error parsing PDF:', err instanceof Error ? err.message : 'Unknown error')
+        throw new Error('Failed to parse PDF. ' + (err as Error).message)
     }
 }

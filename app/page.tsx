@@ -4,7 +4,7 @@ import { generateCoverLetter } from './lib/generateCoverLetter'
 import { extractJobDataFromPage } from './lib/extractJobDataFromPage'
 import { ErrorHeader } from './components/ErrorHeader'
 import { SuccessHeader } from './components/SuccessHeader'
-import { parsePDF, validatePDF } from './lib/pdfParser'
+import { validatePDF } from './lib/pdfParser'
 import { StructuredResume } from './components/StructuredResume'
 import logger from './lib/logger'
 
@@ -118,6 +118,8 @@ export default function Home() {
         setResumeFile(file)
         setResumeText('')
         setResumeSections([])
+        setError(null)
+        setSuccessMessage(null)
 
         if (file) {
             // Validate file first
@@ -147,6 +149,7 @@ export default function Home() {
                 const { text, sections } = await response.json()
                 setResumeText(text)
                 setResumeSections(sections)
+                setSuccessMessage('PDF parsed successfully')
             } catch (error) {
                 console.error('Error parsing PDF:', error)
                 setError(error instanceof Error ? error.message : 'Failed to parse PDF')
@@ -375,59 +378,7 @@ export default function Home() {
                         </button>
                     </div>
                     {resumeInputMode === 'text' ? (
-                        <div className="mb-4">
-                            {resumeSections.length > 0 ? (
-                                <div className="mt-4">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h3 className="text-lg font-semibold text-gray-700">
-                                            Resume Content
-                                        </h3>
-                                        <div className="flex gap-2">
-                                            <button
-                                                className={`px-3 py-1 rounded ${
-                                                    viewMode === 'structured'
-                                                        ? 'bg-blue-500 text-white'
-                                                        : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
-                                                }`}
-                                                onClick={() => setViewMode('structured')}
-                                            >
-                                                Structured
-                                            </button>
-                                            <button
-                                                className={`px-3 py-1 rounded ${
-                                                    viewMode === 'raw'
-                                                        ? 'bg-blue-500 text-white'
-                                                        : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
-                                                }`}
-                                                onClick={() => setViewMode('raw')}
-                                            >
-                                                Raw Text
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {viewMode === 'structured' ? (
-                                        <StructuredResume
-                                            sections={resumeSections}
-                                            onChange={handleSectionsChange}
-                                        />
-                                    ) : (
-                                        <textarea
-                                            className="w-full border rounded p-2 min-h-[200px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
-                                            value={resumeText}
-                                            onChange={(e) => setResumeText(e.target.value)}
-                                        />
-                                    )}
-                                </div>
-                            ) : (
-                                <textarea
-                                    className="w-full border rounded p-2 min-h-[120px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
-                                    placeholder="Paste your resume content here..."
-                                    value={resumeText}
-                                    onChange={(e) => setResumeText(e.target.value)}
-                                />
-                            )}
-                        </div>
+                        <div></div>
                     ) : (
                         <div className="relative">
                             <label className="font-medium text-gray-500 mb-2 block">
@@ -470,7 +421,9 @@ export default function Home() {
                             )}
                         </div>
                     )}
-                    {resumeSections.length > 0 && (
+                </div>
+                <div className="mb-4">
+                    {resumeSections.length > 0 ? (
                         <div className="mt-4">
                             <div className="flex justify-between items-center mb-2">
                                 <h3 className="text-lg font-semibold text-gray-700">
@@ -513,9 +466,18 @@ export default function Home() {
                                 />
                             )}
                         </div>
+                    ) : resumeInputMode === 'text' ? (
+                        <textarea
+                            className="w-full border rounded p-2 min-h-[120px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
+                            placeholder="Paste your resume content here..."
+                            value={resumeText}
+                            onChange={(e) => setResumeText(e.target.value)}
+                        />
+                    ) : (
+                        // Empty div to show the file input
+                        <div></div>
                     )}
                 </div>
-
                 <div className="mb-4">
                     <div className="flex items-center justify-between">
                         <label className="font-medium text-gray-500">Job Link or Description</label>
