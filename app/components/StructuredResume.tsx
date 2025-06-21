@@ -68,7 +68,7 @@ export function StructuredResume({ sections: initialSections, onChange }: Struct
     }
 
     // Add formatting toolbar component
-    const FormattingToolbar = ({ index }: { index: number }) => {
+    const FormattingToolbar = () => {
         const applyFormat = (format: 'bold' | 'italic') => {
             const selection = window.getSelection()
             if (!selection?.rangeCount) return
@@ -204,7 +204,7 @@ export function StructuredResume({ sections: initialSections, onChange }: Struct
                                 >
                                     Add Bullet
                                 </button>
-                                <FormattingToolbar index={index} />
+                                <FormattingToolbar />
                             </div>
                         </div>
                     )}
@@ -234,7 +234,7 @@ export function StructuredResume({ sections: initialSections, onChange }: Struct
                             >
                                 {section.content}
                             </div>
-                            <FormattingToolbar index={index} />
+                            <FormattingToolbar />
                         </div>
                     )}
                 </div>
