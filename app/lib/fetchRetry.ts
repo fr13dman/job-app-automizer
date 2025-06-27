@@ -21,6 +21,11 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 }
 
 const isRetryableError = (error: ApiError): boolean => {
+    logger.debug({
+        msg: 'Checking if error is retryable',
+        error: error,
+    })
+
     // Network errors are retryable
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
         return true
@@ -28,6 +33,10 @@ const isRetryableError = (error: ApiError): boolean => {
 
     // 5xx errors are retryable
     if (error.status && error.status >= 500) {
+        logger.debug({
+            msg: '5xx error, retrying',
+            error: error,
+        })
         return true
     }
 
@@ -64,6 +73,13 @@ export async function resilientFetch<T>(
     let retryCount = 0
 
     while (retryCount <= finalConfig.maxRetries) {
+        logger.debug({
+            msg: 'Retrying fetch',
+            url: url,
+            options: options,
+            config: finalConfig,
+            retryCount: retryCount,
+        })
         try {
             const controller = new AbortController()
             const timeoutId = setTimeout(() => controller.abort(), finalConfig.timeout)
@@ -113,6 +129,11 @@ export async function resilientFetch<T>(
 
             return data as T
         } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                logger.error('Fetch request aborted due to timeout')
+                throw new Error('Fetch request aborted due to timeout')
+            }
+
             lastError = error as ApiError
 
             // Don't retry if it's not a retryable error

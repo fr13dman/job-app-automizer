@@ -4,7 +4,7 @@ import logger from './logger'
 // Configure OpenAI with proper error handling and timeouts
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
-    maxRetries: 3,
+    maxRetries: 5, // 5 retries
     timeout: 30000, // 30 seconds timeout
     defaultQuery: { 'api-version': '2024-02-15-preview' },
     defaultHeaders: { 'x-ms-useragent': 'job-app-automizer/1.0.0' },
@@ -50,6 +50,7 @@ export const generateCoverLetter = async (params: GenerateCoverLetterParams) => 
     Ignore the outline and just write the cover letter. Also do not include placeholders for the cover letter.
     Do not include any other text than the cover letter. Do not add subheadings or other text.
     ${params.additionalParameters?.join('\n')}`
+
     try {
         // Generate the cover letter with the following parameters
         const response = await openai.chat.completions.create(
@@ -65,11 +66,12 @@ export const generateCoverLetter = async (params: GenerateCoverLetterParams) => 
                         content: `Resume: ${params.resume}\nJob Description: ${params.jobDescription}`,
                     },
                 ],
-                temperature: 0.5,
+                temperature: 0.7,
                 max_tokens: 3000,
             },
             {
-                timeout: 25000, // 25 second timeout
+                timeout: 15000, // 15 second timeout
+                retries: 3, // 3 retries
             }
         )
         const content = response.choices[0].message.content
@@ -80,6 +82,10 @@ export const generateCoverLetter = async (params: GenerateCoverLetterParams) => 
 
         return content
     } catch (error) {
+        // Check if it's a 502 error or other retryable error
+        const isRetryable =
+            error instanceof OpenAI.APIError && (error.status === 502 || error.status === 503)
+
         // Enhanced error logging
         logger.error({
             msg: 'Error in generateCoverLetter',
