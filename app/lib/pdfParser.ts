@@ -79,7 +79,7 @@ export async function parsePDF(file: File): Promise<{
     if (!validation.isValid) {
         throw new Error(validation.error)
     }
-    logger.info({
+    logger.debug({
         msg: 'PDF validated',
         file: file,
     })
@@ -179,7 +179,7 @@ export async function parsePDF(file: File): Promise<{
                             fontSize = Math.abs(fontSize)
 
                             // Check if text is bold or italic (you may need to adjust based on your PDF structure)
-                            const isBold = textElement.R[0].TS?.[0] === 1 // Adjust based on your font mapping
+                            const isBold = textElement.R[0].TS?.[2] === 1 // Adjust based on your font mapping
                             const isItalic = textElement.R[0].TS?.[0] === 2 // Adjust based on your font mapping
 
                             const lineInfo: LineInfo = {
@@ -261,20 +261,20 @@ export async function parsePDF(file: File): Promise<{
                         sortedLines.forEach((line) => {
                             if (!line.text) return
                             const cleanText = line.text.replace(/\r\n|\r|\n|\_/g, '')
+                            if (cleanText.trim() === '') return // skip empty lines
 
                             // Detect headings based on font size and other characteristics
                             // PRIORITY: Bold text is ALWAYS a heading
                             const isHeading =
-                                line.isBold ||
-                                line.fontSize >= headingFontSizeThreshold ||
-                                (cleanText.length < 100 &&
-                                    cleanText.toUpperCase() === cleanText &&
-                                    line.fontSize >= avgFontSize) ||
-                                (cleanText.length < 50 && line.fontSize >= avgFontSize * 1.1)
+                                line.isBold || line.fontSize >= headingFontSizeThreshold
+                            // (cleanText.length < 100 &&
+                            //     cleanText.toUpperCase() === cleanText &&
+                            //     line.fontSize >= avgFontSize) ||
+                            // (cleanText.length < 50 && line.fontSize >= avgFontSize * 1.1)
 
                             // Detect bullet points (but not if it's bold)
                             const bulletPatterns = [
-                                /^[•·▪▫◦‣⁃]/,
+                                /^[•·▪▫◦‣]/,
                                 /^[-–—]/,
                                 /^[a-zA-Z]\)/,
                                 /^[0-9]+\./,
@@ -284,6 +284,7 @@ export async function parsePDF(file: File): Promise<{
                                 /^▸/,
                                 /^▪/,
                                 /^▫/,
+                                /[•·▪▫◦‣]/,
                             ]
 
                             const isBulletPoint =
@@ -332,9 +333,7 @@ export async function parsePDF(file: File): Promise<{
                                 // BUT only if it's not bold (bold text breaks out of bullet points)
                                 bulletPointLines.push(cleanText)
                                 // Update the current section content to include this line
-                                if (currentSection) {
-                                    currentSection.content = bulletPointLines.join(' ')
-                                }
+                                currentSection.content = bulletPointLines.join(' ')
                             } else {
                                 // Regular paragraph text (or bold text that's not a heading)
                                 if (currentSection) {

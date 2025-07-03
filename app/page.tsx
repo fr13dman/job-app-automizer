@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { generateCoverLetter } from './lib/generateCoverLetter'
+import { generateCoverLetter, generateCoverLetterWithFile } from './lib/generateCoverLetter'
 import { extractJobDataFromPage } from './lib/extractJobDataFromPage'
 import { ErrorHeader } from './components/ErrorHeader'
 import { SuccessHeader } from './components/SuccessHeader'
@@ -22,6 +22,7 @@ export default function Home() {
     const [autoExtract, setAutoExtract] = useState(false)
     const [isExtracting, setIsExtracting] = useState(false)
     const [showManualCopyGuidance, setShowManualCopyGuidance] = useState(false)
+    const [pdfProcessingMode, setPdfProcessingMode] = useState<'extract' | 'direct'>('extract')
 
     const toneOptions = [
         { value: 'casual', label: 'Casual' },
@@ -129,32 +130,38 @@ export default function Home() {
                 return
             }
 
-            setIsParsingPDF(true)
-            setError(null)
+            // Only parse PDF if we're in extract mode
+            if (pdfProcessingMode === 'extract') {
+                setIsParsingPDF(true)
+                setError(null)
 
-            try {
-                const formData = new FormData()
-                formData.append('file', file)
+                try {
+                    const formData = new FormData()
+                    formData.append('file', file)
 
-                const response = await fetch('/api/parse-pdf', {
-                    method: 'POST',
-                    body: formData,
-                })
+                    const response = await fetch('/api/parse-pdf', {
+                        method: 'POST',
+                        body: formData,
+                    })
 
-                if (!response.ok) {
-                    const data = await response.json()
-                    throw new Error(data.error || 'Failed to parse PDF')
+                    if (!response.ok) {
+                        const data = await response.json()
+                        throw new Error(data.error || 'Failed to parse PDF')
+                    }
+
+                    const { text, sections } = await response.json()
+                    setResumeText(text)
+                    setResumeSections(sections)
+                    setSuccessMessage('PDF parsed successfully')
+                } catch (error) {
+                    console.error('Error parsing PDF:', error)
+                    setError(error instanceof Error ? error.message : 'Failed to parse PDF')
+                } finally {
+                    setIsParsingPDF(false)
                 }
-
-                const { text, sections } = await response.json()
-                setResumeText(text)
-                setResumeSections(sections)
-                setSuccessMessage('PDF parsed successfully')
-            } catch (error) {
-                console.error('Error parsing PDF:', error)
-                setError(error instanceof Error ? error.message : 'Failed to parse PDF')
-            } finally {
-                setIsParsingPDF(false)
+            } else {
+                // In direct mode, just set success message
+                setSuccessMessage('PDF file ready for direct processing')
             }
         }
     }
@@ -249,7 +256,21 @@ export default function Home() {
         })
 
         try {
-            const result = await generateCoverLetter(resumeText, jobDescription, tone)
+            let result
+            if (resumeInputMode === 'file' && resumeFile && pdfProcessingMode === 'direct') {
+                // Send file directly to API
+                const formData = new FormData()
+                formData.append('resumeFile', resumeFile)
+                formData.append('jobDescription', jobDescription)
+                formData.append('tone', tone)
+                formData.append('processingMode', 'direct')
+
+                result = await generateCoverLetterWithFile(formData)
+            } else {
+                // Use existing text-based approach
+                result = await generateCoverLetter(resumeText, jobDescription, tone)
+            }
+
             logger.debug({
                 msg: 'Generated cover letter',
                 success: result.success,
@@ -354,6 +375,8 @@ export default function Home() {
                 <p className="text-center text-gray-500 mb-6">
                     Upload your resume and job description to generate a personalized cover letter
                 </p>
+
+                {/* Resume Input Mode */}
                 <div className="mb-4">
                     <div className="flex gap-2 mb-2">
                         <button
@@ -377,6 +400,46 @@ export default function Home() {
                             Upload File
                         </button>
                     </div>
+                </div>
+
+                {/* PDF Processing Mode (only show when file mode is selected) */}
+                {resumeInputMode === 'file' && (
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            PDF Processing Mode
+                        </label>
+                        <div className="flex gap-2">
+                            <button
+                                className={`px-4 py-2 rounded-lg border font-semibold transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                                    pdfProcessingMode === 'extract'
+                                        ? 'bg-green-500 text-white shadow'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-green-100'
+                                }`}
+                                onClick={() => setPdfProcessingMode('extract')}
+                            >
+                                Extract Text
+                            </button>
+                            <button
+                                className={`px-4 py-2 rounded-lg border font-semibold transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                                    pdfProcessingMode === 'direct'
+                                        ? 'bg-purple-500 text-white shadow'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-purple-100'
+                                }`}
+                                onClick={() => setPdfProcessingMode('direct')}
+                            >
+                                Send PDF Directly
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {pdfProcessingMode === 'extract'
+                                ? 'Extract text from PDF for processing (faster, but may lose formatting)'
+                                : 'Send PDF directly to AI (preserves formatting, but may be slower)'}
+                        </p>
+                    </div>
+                )}
+
+                {/* Resume Input Mode */}
+                <div className="mb-4">
                     {resumeInputMode === 'text' ? (
                         <div></div>
                     ) : (

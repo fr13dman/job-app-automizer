@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateCoverLetter, OpenAIError, ContentGenerationError } from '../../lib/chatgpt'
+import {
+    generateCoverLetter,
+    OpenAIError,
+    ContentGenerationError,
+    generateCoverLetterWithFile,
+} from '../../lib/chatgpt'
 import { validateInput } from '../../lib/validation'
 import logger from '../../lib/logger'
 
@@ -27,27 +32,89 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
     try {
-        // Get resume, job description, and tone from request body
-        const body = await request.json()
-        const { resume, jobDescription, tone } = body
+        const contentType = request.headers.get('content-type') || ''
+
+        let resume: string
+        let jobDescription: string
+        let tone: string
+        let processingMode: string = 'text'
+        let resumeFile: File | null = null
+
+        // Check if this is a multipart form data request (file upload)
+        if (contentType.includes('multipart/form-data')) {
+            const formData = await request.formData()
+
+            resumeFile = formData.get('resumeFile') as File
+            const jobDescriptionForm = formData.get('jobDescription')
+            const toneForm = formData.get('tone')
+            const processingModeForm = formData.get('processingMode')
+
+            if (!resumeFile || !jobDescriptionForm || !toneForm) {
+                throw new APIError(
+                    'Missing required fields (resumeFile, jobDescription, tone)',
+                    400
+                )
+            }
+
+            jobDescription = jobDescriptionForm.toString()
+            tone = toneForm.toString()
+            processingMode = processingModeForm?.toString() || 'text'
+
+            // For direct processing, we don't need resume text
+            resume = ''
+        } else {
+            // Handle JSON request (text-based)
+            const body = await request.json()
+            resume = body.resume
+            jobDescription = body.jobDescription
+            tone = body.tone
+            processingMode = body.processingMode || 'text'
+        }
 
         // Input validation
-        if (!resume || !jobDescription || !tone) {
+        if (processingMode === 'text' && (!resume || !jobDescription || !tone)) {
             throw new APIError('Missing required fields (resume, jobDescription, tone)', 400)
         }
 
-        // Backend validation for security
-        const resumeValidation = validateInput(resume)
-        if (!resumeValidation.isValid) {
-            throw new APIError(`Resume validation failed: ${resumeValidation.error}`, 400)
+        if (processingMode === 'direct' && (!resumeFile || !jobDescription || !tone)) {
+            throw new APIError('Missing required fields (resumeFile, jobDescription, tone)', 400)
         }
 
-        const jobDescriptionValidation = validateInput(jobDescription)
-        if (!jobDescriptionValidation.isValid) {
-            throw new APIError(
-                `Job description validation failed: ${jobDescriptionValidation.error}`,
-                400
-            )
+        // Backend validation for security
+        if (processingMode === 'text') {
+            const resumeValidation = validateInput(resume)
+            if (!resumeValidation.isValid) {
+                throw new APIError(`Resume validation failed: ${resumeValidation.error}`, 400)
+            }
+
+            const jobDescriptionValidation = validateInput(jobDescription)
+            if (!jobDescriptionValidation.isValid) {
+                throw new APIError(
+                    `Job description validation failed: ${jobDescriptionValidation.error}`,
+                    400
+                )
+            }
+        } else {
+            // Validate file
+            if (resumeFile) {
+                const jobDescriptionValidation = validateInput(jobDescription)
+                if (!jobDescriptionValidation.isValid) {
+                    throw new APIError(
+                        `Job description validation failed: ${jobDescriptionValidation.error}`,
+                        400
+                    )
+                }
+
+                // Validate file type and size
+                if (resumeFile.type !== 'application/pdf') {
+                    throw new APIError('File must be a PDF', 400)
+                }
+
+                if (resumeFile.size > 25 * 1024 * 1024) {
+                    // 25MB limit for OpenAI
+                    throw new APIError('File size must be less than 25MB', 400)
+                }
+            }
         }
 
         const additionalParameters = [
@@ -58,12 +125,25 @@ export async function POST(request: NextRequest) {
             '# ADDITIONAL INSTRUCTIONS\n- Include a call to action to apply to the job',
         ]
 
-        const response = await generateCoverLetter({
-            resume,
-            jobDescription,
-            tone,
-            additionalParameters,
-        })
+        let response: string
+
+        if (processingMode === 'direct' && resumeFile) {
+            // Use file-based processing
+            response = await generateCoverLetterWithFile({
+                resumeFile,
+                jobDescription,
+                tone,
+                additionalParameters,
+            })
+        } else {
+            // Use text-based processing
+            response = await generateCoverLetter({
+                resume,
+                jobDescription,
+                tone,
+                additionalParameters,
+            })
+        }
 
         return NextResponse.json(
             {
