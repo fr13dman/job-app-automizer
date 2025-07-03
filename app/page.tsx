@@ -364,6 +364,19 @@ export default function Home() {
         )
     }
 
+    // Add this function to handle PDF processing mode changes
+    const handlePdfProcessingModeChange = (mode: 'extract' | 'direct') => {
+        setPdfProcessingMode(mode)
+
+        // If switching to direct mode, clear the extracted text and sections
+        if (mode === 'direct') {
+            // setResumeText('')
+            // setResumeSections([])
+            setError(null)
+            setSuccessMessage(null)
+        }
+    }
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100">
             <ErrorHeader error={error} onClose={() => setError(null)} />
@@ -415,7 +428,7 @@ export default function Home() {
                                         ? 'bg-green-500 text-white shadow'
                                         : 'bg-gray-100 text-gray-700 hover:bg-green-100'
                                 }`}
-                                onClick={() => setPdfProcessingMode('extract')}
+                                onClick={() => handlePdfProcessingModeChange('extract')}
                             >
                                 Extract Text
                             </button>
@@ -425,7 +438,7 @@ export default function Home() {
                                         ? 'bg-purple-500 text-white shadow'
                                         : 'bg-gray-100 text-gray-700 hover:bg-purple-100'
                                 }`}
-                                onClick={() => setPdfProcessingMode('direct')}
+                                onClick={() => handlePdfProcessingModeChange('direct')}
                             >
                                 Send PDF Directly
                             </button>
@@ -485,8 +498,72 @@ export default function Home() {
                         </div>
                     )}
                 </div>
+
+                {/* Resume Content Display */}
                 <div className="mb-4">
-                    {resumeSections.length > 0 ? (
+                    {resumeInputMode === 'text' ? (
+                        // Text input mode - always show textarea
+                        <textarea
+                            className="w-full border rounded p-2 min-h-[120px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
+                            placeholder="Paste your resume content here..."
+                            value={resumeText}
+                            onChange={(e) => setResumeText(e.target.value)}
+                        />
+                    ) : resumeInputMode === 'file' && pdfProcessingMode === 'direct' ? (
+                        // File input mode with direct processing - show status message
+                        <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                            {resumeFile ? (
+                                <div>
+                                    <svg
+                                        className="mx-auto h-12 w-12 text-green-500 mb-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <p className="text-sm font-medium text-green-600 mb-2">
+                                        PDF file ready for direct processing
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        {resumeFile.name} (
+                                        {(resumeFile.size / 1024 / 1024).toFixed(2)} MB)
+                                    </p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <svg
+                                        className="mx-auto h-12 w-12 text-gray-400 mb-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                    </svg>
+                                    <p className="text-sm text-gray-600">
+                                        Upload a PDF file to send directly to the AI
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        No text extraction needed - the AI will read the PDF
+                                        directly
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    ) : resumeInputMode === 'file' &&
+                      pdfProcessingMode === 'extract' &&
+                      resumeSections.length > 0 ? (
+                        // File input mode with extract processing and sections available
                         <div className="mt-4">
                             <div className="flex justify-between items-center mb-2">
                                 <h3 className="text-lg font-semibold text-gray-700">
@@ -529,17 +606,30 @@ export default function Home() {
                                 />
                             )}
                         </div>
-                    ) : resumeInputMode === 'text' ? (
-                        <textarea
-                            className="w-full border rounded p-2 min-h-[120px] focus:ring-2 focus:ring-blue-300 transition text-blue-700"
-                            placeholder="Paste your resume content here..."
-                            value={resumeText}
-                            onChange={(e) => setResumeText(e.target.value)}
-                        />
-                    ) : (
-                        // Empty div to show the file input
-                        <div></div>
-                    )}
+                    ) : resumeInputMode === 'file' && pdfProcessingMode === 'extract' ? (
+                        // File input mode with extract processing but no sections yet
+                        <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                            <svg
+                                className="mx-auto h-12 w-12 text-gray-400 mb-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                            </svg>
+                            <p className="text-sm text-gray-600">
+                                Upload a PDF file to extract text content
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                The PDF will be parsed and text will be extracted for processing
+                            </p>
+                        </div>
+                    ) : null}
                 </div>
                 <div className="mb-4">
                     <div className="flex items-center justify-between">
