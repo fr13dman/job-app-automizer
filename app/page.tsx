@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { generateCoverLetter, generateCoverLetterWithFile } from './lib/generateCoverLetter'
+import { generateCuratedResume } from './lib/generateCuratedResume'
 import { extractJobDataFromPage } from './lib/extractJobDataFromPage'
 import { ErrorHeader } from './components/ErrorHeader'
 import { SuccessHeader } from './components/SuccessHeader'
@@ -18,7 +19,9 @@ export default function Home() {
     const [error, setError] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+    const [loadingResume, setLoadingResume] = useState(false)
     const [coverLetter, setCoverLetter] = useState('')
+    const [curatedResume, setCuratedResume] = useState('')
     const [autoExtract, setAutoExtract] = useState(false)
     const [isExtracting, setIsExtracting] = useState(false)
     const [showManualCopyGuidance, setShowManualCopyGuidance] = useState(false)
@@ -187,6 +190,111 @@ export default function Home() {
         setResumeText(rawText)
     }
 
+    const handleGenerateResume = async () => {
+        setError(null)
+        setSuccessMessage(null)
+        setLoadingResume(true)
+        setCoverLetter('') // Reset cover letter text area
+
+        // Validate inputs
+        if ((resumeInputMode === 'file' && !resumeFile) || !jobText.trim()) {
+            setError('Please upload resume and provide job description to curate your resume.')
+            setLoadingResume(false)
+            return
+        }
+
+        let jobDescription = jobText
+
+        // Validate jobLink or check if it's a valid career page
+        if (
+            !autoExtract &&
+            (jobDescription.trim().startsWith('https://') ||
+                jobDescription.trim().startsWith('http://'))
+        ) {
+            try {
+                logger.debug({
+                    msg: `Found job link ${jobDescription} now extracting job data...`,
+                    isUrl: jobDescription.startsWith('http'),
+                })
+                // Validate jobLink is a valid career page by fetching the page
+                const jobData = await extractJobDataFromPage(jobDescription)
+                if (!jobData.isJobPage) {
+                    setError(
+                        `Please provide a valid job link or description: Reason: ${jobData.error}`
+                    )
+                    setLoadingResume(false)
+                    return
+                }
+
+                jobDescription =
+                    jobData.description ||
+                    jobData.sections.map((section) => section.content).join('\n')
+            } catch (error) {
+                setError(
+                    `Please provide a valid job link or description: Reason: ${
+                        error instanceof Error ? error.message : 'Unknown error'
+                    }`
+                )
+                setLoadingResume(false)
+                return
+            }
+        } else {
+            // If it's not a link, check if it's a valid job description
+            if (!jobDescription.trim()) {
+                setError('Please provide a valid job link or description.')
+                setLoadingResume(false)
+                return
+            }
+        }
+
+        logger.debug({
+            msg: 'Processing job description',
+            isUrl: jobDescription.startsWith('http'),
+            length: jobDescription.length,
+        })
+
+        try {
+            let result
+            if (resumeInputMode === 'file' && resumeFile && pdfProcessingMode === 'direct') {
+                // Send file directly to API
+                const formData = new FormData()
+                formData.append('resumeFile', resumeFile)
+                formData.append('jobDescription', jobDescription)
+                formData.append('tone', tone)
+                formData.append('processingMode', 'direct')
+
+                result = await generateCuratedResume(formData)
+            } else {
+                setError('Please upload resume and provide job description to curate your resume.')
+                setLoadingResume(false)
+                return
+            }
+
+            logger.debug({
+                msg: 'Generated curated resume',
+                success: result.success,
+                hasCuratedResume: !!result.curatedResume,
+            })
+
+            if (result.success && result.curatedResume) {
+                setCuratedResume(result.curatedResume)
+                setSuccessMessage('Curated resume generated successfully')
+            } else {
+                setError(result.error || 'An unknown error occurred')
+            }
+
+            setLoadingResume(false)
+        } catch (error) {
+            logger.error({
+                msg: 'Error generating curated resume',
+                error: error instanceof Error ? error.message : 'Unknown error',
+            })
+            setError(error instanceof Error ? error.message : 'An unknown error occurred')
+            setLoadingResume(false)
+            return
+        }
+    }
+
     const handleGenerate = async () => {
         setError(null)
         setSuccessMessage(null)
@@ -296,7 +404,7 @@ export default function Home() {
         }
     }
 
-    const CoverLetterDisplay = ({ content }: { content: string }) => {
+    const ResponseDisplay = ({ content }: { content: string }) => {
         const [copied, setCopied] = useState(false)
 
         const handleCopy = async () => {
@@ -311,9 +419,7 @@ export default function Home() {
 
         return (
             <div className="mt-4 relative">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Generated Cover Letter
-                </label>
+                <label className="font-medium text-gray-500">Generated Cover Letter</label>
                 <div className="relative">
                     <button
                         onClick={handleCopy}
@@ -383,10 +489,11 @@ export default function Home() {
             <SuccessHeader message={successMessage} onClose={() => setSuccessMessage(null)} />
             <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl mt-8 mb-8">
                 <h1 className="text-3xl font-extrabold text-center mb-2 text-blue-700 drop-shadow">
-                    Cover Letter Generator
+                    Personalize Your Job Applications!
                 </h1>
                 <p className="text-center text-gray-500 mb-6">
                     Upload your resume and job description to generate a personalized cover letter
+                    or curate your resume
                 </p>
 
                 {/* Resume Input Mode */}
@@ -751,8 +858,45 @@ export default function Home() {
                             'Generate Cover Letter'
                         )}
                     </button>
+                    <button
+                        className={`w-full sm:w-auto bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white font-bold py-2 px-6 rounded-lg shadow-lg transition-all duration-150 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                            loadingResume ? 'opacity-60 cursor-not-allowed' : ''
+                        }`}
+                        onClick={handleGenerateResume}
+                        disabled={loadingResume}
+                        style={{ minWidth: 180 }}
+                    >
+                        {loadingResume ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <svg
+                                    className="animate-spin h-5 w-5 text-white"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                    ></circle>
+                                    <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8v8z"
+                                    ></path>
+                                </svg>
+                                Generating Curated Resume...
+                            </span>
+                        ) : (
+                            'Curate Your Resume'
+                        )}
+                    </button>
                 </div>
-                {coverLetter && <CoverLetterDisplay content={coverLetter} />}
+                {coverLetter && <ResponseDisplay content={coverLetter} />}
+                {curatedResume && <ResponseDisplay content={curatedResume} />}
             </div>
         </div>
     )
