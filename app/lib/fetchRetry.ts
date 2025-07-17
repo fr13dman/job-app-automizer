@@ -59,6 +59,7 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 
 const calculateBackoff = (retryCount: number, initialDelay: number, maxDelay: number): number => {
     const backoff = Math.min(initialDelay * Math.pow(2, retryCount), maxDelay)
+    logger.info('Retry backoff: ' + backoff)
     // Add some jitter to prevent thundering herd
     return backoff + Math.random() * 1000
 }
@@ -92,11 +93,13 @@ export async function resilientFetch<T>(
             clearTimeout(timeoutId)
 
             if (!response.ok) {
-                const error = new Error(`HTTP error! status: ${response.status}`) as ApiError
+                const error = new Error(
+                    `HTTP error! Try again later. status: ${response.status} ${response.statusText}`
+                ) as ApiError
                 error.status = response.status
                 error.isRetryable = response.status >= 500
-                error.message = `HTTP error! status: ${response.status} ${response.statusText}`
-                logger.error('HTTP error! status: ' + response.status)
+                error.message = `HTTP error! Try again later. status: ${response.status} ${response.statusText}`
+                logger.error('HTTP error! Try again later. status: ' + response.status)
                 throw error
             }
 

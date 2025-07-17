@@ -298,11 +298,11 @@ export const generateCuratedResume = async (params: GenerateCuratedResumeParams)
                         ],
                     },
                 ],
-                temperature: 0.5,
-                max_tokens: 3000,
+                temperature: 0.7,
+                max_tokens: 5000,
             },
             {
-                timeout: 30000, // 30 second timeout for file processing
+                timeout: 60000, // 60 second timeout for file processing
             }
         )
         const content = response.choices[0].message.content

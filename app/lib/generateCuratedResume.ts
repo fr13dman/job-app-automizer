@@ -12,7 +12,7 @@ interface GenerateCuratedResumeResponse {
 export async function generateCuratedResume(
     formData: FormData
 ): Promise<GenerateCuratedResumeResponse> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://jobappautomizerz.netlify.app'
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://job-app-automizer-g2gz.vercel.app/'
     const isDevelopment = process.env.NODE_ENV === 'development'
 
     // Use CORS proxy in development
